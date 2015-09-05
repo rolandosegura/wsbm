@@ -98,6 +98,9 @@ func main() {
 	if port := os.Getenv("VCAP_APP_PORT"); port != "" {
 		*flagPort = port
 	}
+	if m := os.Getenv("MONGOLAB_URI"); m != "" {
+		*flagMongo = m
+	}
 	session, err := mgo.Dial(*flagMongo)
 	if err != nil {
 		log.Fatalf("%s:%s", *flagMongo, err)
