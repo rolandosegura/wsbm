@@ -19,7 +19,9 @@ type server struct {
 }
 
 func (s *server) put(v string) (bson.ObjectId, error) {
-	c := s.dbSession.DB(s.dbName).C("dkv")
+	sess := s.dbSession.Copy()
+	defer sess.Close()
+	c := sess.DB(s.dbName).C("dkv")
 	k := bson.NewObjectId()
 	err := c.Insert(&struct {
 		ID   bson.ObjectId `bson:"_id"`
@@ -39,13 +41,14 @@ func (s *server) get(k string) (string, error) {
 	if !bson.IsObjectIdHex(k) {
 		return data.Data, mgo.ErrNotFound
 	}
-	c := s.dbSession.DB(s.dbName).C("dkv")
+	sess := s.dbSession.Copy()
+	defer sess.Close()
+	c := sess.DB(s.dbName).C("dkv")
 	err := c.Find(bson.M{"_id": bson.ObjectIdHex(k)}).One(&data)
 	return data.Data, err
 }
 
 func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	whdr := w.Header()
 	urlcomp := strings.Split(r.URL.Path, "/")
 	switch r.Method {
 	case "GET":
@@ -76,6 +79,7 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "{\n	Key: \"%s\"\n}\n", key.Hex())
 		return
 	default:
+		whdr := w.Header()
 		whdr.Add("Allow", "GET,POST")
 		http.Error(w, "invalid http method", http.StatusMethodNotAllowed)
 		return
